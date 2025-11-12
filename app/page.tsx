@@ -1,65 +1,87 @@
-import Image from "next/image";
+"use client"; // Client component rehna zaroori hai
 
-export default function Home() {
+import React, { useState, useCallback } from 'react';
+import { useDropzone } from 'react-dropzone';
+import { parsePdf } from '../lib/pdfParser'; // <-- STEP 3 se import
+import axios from 'axios'; // <-- Axios install kiya tha, ab use karenge
+
+export default function Page() {
+  const [extractedText, setExtractedText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    if (!file) return;
+
+    setIsLoading(true);
+    setError(null);
+    setExtractedText('');
+
+    try {
+      if (file.type === 'application/pdf') {
+        // --- PDF Logic (Step 3) ---
+        const text = await parsePdf(file);
+        setExtractedText(text);
+
+      } else if (file.type.startsWith('image/')) {
+        // --- Image OCR Logic (Step 4) ---
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // Naye API route ko call karein
+        const response = await axios.post('/api/ocr', formData);
+        
+        setExtractedText(response.data.text);
+
+      } else {
+        throw new Error('Unsupported file type. Sirf PDF ya Image daalein.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'File process karne mein error hua');
+    } finally {
+      setIsLoading(false); // Loading hamesha false karein
+    }
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'application/pdf': ['.pdf'],
+      'image/jpeg': ['.jpeg', '.jpg'],
+      'image/png': ['.png'],
+    },
+    maxFiles: 1,
+  });
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div style={{ padding: '20px', maxWidth: '600px', margin: 'auto' }}>
+      <h1>Social Media Content Analyzer</h1>
+      
+      <div 
+        {...getRootProps()} 
+        style={{ border: '2px dashed #ccc', padding: '20px', textAlign: 'center', cursor: 'pointer' }}
+      >
+        <input {...getInputProps()} />
+        {isDragActive ? (
+          <p>Drop the file here ...</p>
+        ) : (
+          <p>Drag 'n' drop a PDF or image, or click to select</p>
+        )}
+      </div>
+
+      {isLoading && <p style={{ textAlign: 'center' }}>Processing... Please wait.</p>}
+      
+      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
+      
+      {extractedText && (
+        <div style={{ marginTop: '20px', border: '1px solid #eee', padding: '10px' }}>
+          <h3>Extracted Text:</h3>
+          <pre style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>
+            {extractedText}
+          </pre>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      )}
     </div>
   );
 }
