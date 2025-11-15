@@ -1,9 +1,9 @@
-"use client"; // Client component rehna zaroori hai
+"use client";
 
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { parsePdf } from '../lib/pdfParser'; // <-- STEP 3 se import
-import axios from 'axios'; // <-- Axios install kiya tha, ab use karenge
+import { parsePdf } from '../lib/pdfParser';
+import axios from 'axios';
 
 export default function Page() {
   const [extractedText, setExtractedText] = useState('');
@@ -20,27 +20,24 @@ export default function Page() {
 
     try {
       if (file.type === 'application/pdf') {
-        // --- PDF Logic (Step 3) ---
         const text = await parsePdf(file);
         setExtractedText(text);
 
       } else if (file.type.startsWith('image/')) {
-        // --- Image OCR Logic (Step 4) ---
         const formData = new FormData();
         formData.append('file', file);
-
-        // Naye API route ko call karein
         const response = await axios.post('/api/ocr', formData);
-        
         setExtractedText(response.data.text);
 
       } else {
         throw new Error('Unsupported file type. Sirf PDF ya Image daalein.');
       }
-    } catch (err: any) {
-      setError(err.message || 'File process karne mein error hua');
+    } catch (err) { // Fix 1: 'any' ko yahan se hataya
+      // 'err' ko Error object maan kar uska message nikalein
+      const error = err as Error;
+      setError(error.message || 'File process karne mein error hua');
     } finally {
-      setIsLoading(false); // Loading hamesha false karein
+      setIsLoading(false);
     }
   }, []);
 
@@ -66,7 +63,8 @@ export default function Page() {
         {isDragActive ? (
           <p>Drop the file here ...</p>
         ) : (
-          <p>Drag 'n' drop a PDF or image, or click to select</p>
+          // Fix 2: Apostrophe ko &apos; se badla
+          <p>Drag &apos;n&apos; drop a PDF or image, or click to select</p>
         )}
       </div>
 

@@ -1,7 +1,8 @@
-import * as pdfjsLib from 'pdfjs-dist';
+// Fix 1: Add a description for the @ts-expect-error
+// @ts-expect-error: The 'pdfjs-dist/legacy/build/pdf' module lacks official type declarations.
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
 
-// PDF.js worker ko set karna zaroori hai
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/legacy/build/pdf.worker.min.js`;
 
 export async function parsePdf(file: File) {
   const arrayBuffer = await file.arrayBuffer();
@@ -11,7 +12,9 @@ export async function parsePdf(file: File) {
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const textContent = await page.getTextContent();
-    allText += textContent.items.map((item: any) => item.str).join(' ') + '\n';
+
+    // Fix 2: Use a specific type for 'item'
+    allText += textContent.items.map((item: { str: string }) => item.str).join(' ') + '\n';
   }
 
   return allText;
